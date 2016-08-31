@@ -235,67 +235,147 @@ def _print_cc(cc):
         val = getattr(termios, item)
         print(item, "=", cc[val])
 
-PARITY_NONE = 0
-PARITY_EVEN = 1
-PARITY_ODD = 2
+def _print_speed(speed):
+    for item in BAUD_RATES:
+        val = getattr(termios, item)
+        if speed == val:
+            print(speed, "=", item)
+            return
 
 class SerialIo:
 
-    def __init__(self, dev, baud = 38400, databits = 8, parity = PARITY_NONE, stopbits = 1):
+    def __init__(self, dev, baud = 38400):
         self._baud = baud
-        self._data_bits = databits
-        self._parity = parity
-        self._stop_bits = stopbits
+        self._in_buf = b""
 
-        self.fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+        try:
+#           self.fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+            self.fd = os.open(dev, os.O_RDWR | os.O_NOCTTY)
+        except PermissionError as err:
+            print("Permission to open {} denied".format(dev))
+            raise
+#       fcntl.fcntl(self.fd, fcntl.F_SETFL, 0) # Clear O_NONBLOCK
+
         iflag, oflag, cflag, lflag, ispeed, ospeed, cc = termios.tcgetattr(self.fd)
-        print(iflag, oflag, cflag, lflag, ispeed, ospeed, cc)
         _print_iflags(iflag)
         _print_oflags(oflag)
         _print_cflags(cflag)
         _print_lflags(lflag)
+        _print_speed(ispeed)
+        _print_speed(ospeed)
         _print_cc(cc)
 
         iflag = self._update_input_mode_flags(iflag)
         oflag = self._update_output_mode_flags(oflag)
         cflag = self._update_ctrl_mode_flags(cflag)
         lflag = self._update_local_mode_flags(lflag)
+        ispeed = self._update_speed(ispeed)
+        ospeed = self._update_speed(ospeed)
         termios.tcsetattr(self.fd, termios.TCSANOW, [iflag, oflag, cflag, lflag, ispeed, ospeed, cc])
-        
+   
+    def __del__(self):
+        os.close(self.fd)
+
     def _update_input_mode_flags(self, old_iflag):
-        """Set IGNBRK"""
-        clr_mask = termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP
-        set_mask = termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON
+        """Update the iflags (input flags) for the serial port
+        
+        Need to set the following:
+            IGNBRK (Ignore break character)
+        Need to clear the following
+            ISTRIP (No to Strip eigth bit)
+            IGNCR (No to ignore CR)
+            INLCR (No to LF -> CR)
+            ICRNL (No to CR -> LF)
+            IXON (No XON flow control)
+            IXOFF (No XOFF flow control)
+
+            """
+        clr_mask = termios.ISTRIP | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON | termios.IXOFF
+        set_mask = termios.IGNBRK
         return (old_iflag & ~clr_mask) | set_mask
 
+
     def _update_output_mode_flags(self, old_oflag):
-        """"""
-        clr_mask = termios.OPOST
+        """Update the oflags (output flags) for the serial port
+
+        Need to clr the following:
+            OPOST (no to impl define processing)
+            ONLCR (No to map LF to CR/LF
+            OCRNL (No to map CR -> LF
+            ONOCR (No to CR at col 0)
+            ONLRET (No to output CR)
+        """
+        clr_mask = termios.OPOST | termios.ONLCR | termios.OCRNL | termios.ONOCR | termios.ONOCR | termios.ONLRET
         return (old_oflag & ~clr_mask) 
 
     def _update_ctrl_mode_flags(self, old_cflag):
-        """"""
-        enum_val = getattr(termios, "CS{}".format(self._data_bits))
-        
-        if self._stop_bits > 1:
-            stopb_mask = termios.CSTOPB
-        else:
-            stopb_mask = 0
+        """Update the cflags (ctrl flags) for the serial port
+    
+        Need to set the following:
+            CLOCAL (ignore Modem control lines)
+            CREAD (enable Receiver)
+            CS8 (8 bit data bits)
+        Need to clear the following
+            CSTOPB (no to >1stop bit)
+            PARENB (no to parity)
+            PARODD (no to ODD parity)
+            CRTSCTS (no RTS / CTS)
+        """
+        clr_mask = termios.CSIZE | termios.CSTOPB | termios.PARENB | termios.PARODD | termios.CRTSCTS
+        set_mask = termios.CS8 | termios.CLOCAL | termios.CREAD
 
-        if self._parity == PARITY_EVEN:
-            parity_mask = termios.PARENB
-        elif self._parity == PARITY_ODD:
-            parity_mask = termios.PARENB | termios.PARODD
-        else:
-            parity_mask = 0
+        return (old_cflag & ~clr_mask) | set_mask
 
-        clr_mask = termios.CSIZE | termios.CSTOPB | termios.PARENB | termios.PARODD
-        return (old_cflag & ~clr_mask) \
-                 | (enum_val | stopb_mask | parity_mask)
 
     def _update_local_mode_flags(self, old_lflag):
-        clr_mask = termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG | termios.IEXTEN
+        """Update the lflags (local flags) for the serial port
+
+        Need to clear the following
+            ISIG (no to generate signals)
+            ICANON (no to canonical mode)
+            ECHO (no to echo)
+            IEXTEN (no to special input processing)
+        """
+        clr_mask = termios.ECHO | termios.ICANON | termios.ISIG | termios.IEXTEN
         return (old_lflag & ~clr_mask)
+
+    def _update_speed(self, old_speed):
+        """Update the speed parameter"""
+        ranges = (0,
+                 50,      75,      110,     134, 
+                150,     200,      300,     600, 
+               1200,    1800,     2400,    4800, 
+               9600,   19200,    38400,   57600, 
+             115200,  230400,   460800,  500000, 
+             576000,  921600,  1000000, 1152000, 
+            1500000, 2000000,  2500000, 3000000, 
+            3500000, 4000000
+        )
+        for idx, val in enumerate(ranges):
+            if val > self._baud:
+                return getattr(termios, "B{}".format(ranges[idx-1]))
+
+    def readline(self):
+        while True:
+            idx = self._in_buf.find(b"\r")
+            if idx == 0:
+                self._in_buf = self._in_buf[1:]
+                continue
+            if idx > 0:
+                result = self._in_buf[:idx]
+                self._in_buf = self._in_buf[idx+1:]
+                break
+
+            self._in_buf += os.read(self.fd, 1000)
+        return result
+
+    def write(self, cmd):
+        os.write(self.fd, cmd + b"\r")
+
 
 if __name__ == "__main__":
     app = SerialIo("/dev/ttyUSB0")
+    app.write(b"ATZ")
+    print(app.readline())
+    print(app.readline())
+    print(app.readline())
