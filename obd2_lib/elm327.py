@@ -77,7 +77,13 @@ class Elm327:
 
     def request_pid(self, mode, pid):
         """Send mode and pid command"""
-        self.send_get_cmd("{:02X}{:02X}".format(mode,pid).encode("ascii"))
+        response = self.send_get_cmd("{:02X}{:02X}".format(mode,pid).encode("ascii")).decode("ascii")
+        octets = [int(x, base=16) for x in response.split()]
+        assert mode & 0x40 == octets[0]
+        assert pid == octets[1]
+        return octets[2:]
+
+
 if __name__ == "__main__":
     import serial
     io = serial.SerialIo("/dev/ttyUSB0")

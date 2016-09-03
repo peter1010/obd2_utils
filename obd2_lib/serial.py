@@ -4,152 +4,51 @@ import os
 import termios
 
 BAUD_RATES = (
-'B0', 
-'B50', 
-'B75', 
-'B110', 
-'B134', 
-'B150', 
-'B200', 
-'B300', 
-'B600', 
-'B1200', 
-'B1800', 
-'B2400', 
-'B4800', 
-'B9600', 
-'B19200', 
-'B38400', 
-'B57600', 
-'B115200', 
-'B230400', 
-'B460800', 
-'B500000', 
-'B576000', 
-'B921600', 
-'B1000000', 
-'B1152000', 
-'B1500000', 
-'B2000000', 
-'B2500000', 
-'B3000000', 
-'B3500000', 
-'B4000000'
+    0,          50,         75,         110,        134, 
+    150,        200,        300,        600,        1200,
+    1800,       2400,       4800,       9600,       19200,
+    38400,      57600,      115200,     230400,     460800,
+    500000,     576000,     921600,     1000000,    1152000, 
+    1500000,    2000000,    2500000,    3000000,    3500000,
+    4000000
 )
-
-"""
-'CDSUSP', 
-'CEOF', 
-'CEOL', 
-'CEOT', 
-'CERASE', 
-'CFLUSH', 
-'CINTR', 
-'CKILL', 
-'CLNEXT', 
-'CQUIT', 
-'CRPRNT', 
-'CSTART', 
-'CSTOP', 
-'CSUSP', 
-'CWERASE', 
-
-'EXTA', 
-'EXTB', 
-'FIOASYNC', 
-'FIOCLEX', 
-'FIONBIO', 
-'FIONCLEX', 
-'FIONREAD', 
-'IOCSIZE_MASK', 
-'IOCSIZE_SHIFT', 
-'NCC', 
-'NCCS', 
-'N_MOUSE', 
-'N_PPP', 
-'N_SLIP', 
-'N_STRIP', 
-'N_TTY', 
-'TCFLSH', 
-'TCGETA', 
-'TCGETS', 
-'TCIFLUSH', 
-'TCIOFF', 
-'TCIOFLUSH', 
-'TCION', 
-'TCOFLUSH', 
-'TCOOFF', 
-'TCOON', 
-
-'TCSANOW', 
-'TCSADRAIN', 
-'TCSAFLUSH', 
-
-'TCSBRK', 
-'TCSBRKP', 
-'TCSETA', 
-'TCSETAF', 
-'TCSETAW', 'TCSETS', 'TCSETSF', 'TCSETSW', 'TCXONC', 'TIOCCONS', 'TIOCEXCL', 'TIOCGETD', 'TIOCGICOUNT', 'TIOCGLCKTRMIOS', 'TIOCGPGRP', 'TIOCGSERIAL', 
-'TIOCGSOFTCAR', 'TIOCGWINSZ', 'TIOCINQ', 'TIOCLINUX', 'TIOCMBIC', 'TIOCMBIS', 
-'TIOCMGET', 'TIOCMIWAIT', 'TIOCMSET', 'TIOCM_CAR', 'TIOCM_CD', 'TIOCM_CTS', 
-'TIOCM_DSR', 'TIOCM_DTR', 'TIOCM_LE', 'TIOCM_RI', 'TIOCM_RNG', 'TIOCM_RTS', 
-'TIOCM_SR', 'TIOCM_ST', 'TIOCNOTTY', 'TIOCNXCL', 'TIOCOUTQ', 'TIOCPKT', 
-'TIOCPKT_DATA', 'TIOCPKT_DOSTOP', 'TIOCPKT_FLUSHREAD', 'TIOCPKT_FLUSHWRITE', 
-'TIOCPKT_NOSTOP', 'TIOCPKT_START', 'TIOCPKT_STOP', 'TIOCSCTTY', 
-'TIOCSERCONFIG', 'TIOCSERGETLSR', 'TIOCSERGETMULTI', 'TIOCSERGSTRUCT', 
-'TIOCSERGWILD', 'TIOCSERSETMULTI', 'TIOCSERSWILD', 'TIOCSER_TEMT', 'TIOCSETD', 
-'TIOCSLCKTRMIOS', 'TIOCSPGRP', 'TIOCSSERIAL', 'TIOCSSOFTCAR', 'TIOCSTI', 
-'TIOCSWINSZ', 
-'__loader__', '__spec__', 'error', 'tcdrain', 'tcflow', 'tcflush', 'tcgetattr', 'tcsendbreak', 'tcsetattr'
-"""
+ 
 
 def _flags2str(lookup, flags):
-    options = []
+    """Convert the flag bits to a printable string"""
+    items = []
     for bit_mask_name in lookup:
         try:
             bit_mask = getattr(termios, bit_mask_name)
-#            print(bit_mask_name, "=", bit_mask)
             if (flags & bit_mask) == bit_mask:
-                options.append(bit_mask_name)
+                items.append(bit_mask_name)
                 flags &= ~bit_mask
         except TypeError:
             mask_name, shift, enum_list = bit_mask_name
             mask = getattr(termios, mask_name)
-#            print(mask_name, "=", mask)
-            enum = flags & mask
+            enum_val = flags & mask
             for enum_name in enum_list:
-                enum_val = getattr(termios, enum_name) << shift
-#                print(enum_name, "=", enum_val)
-                if enum == enum_val:
-                    options.append(enum_name)
+                if enum_val == getattr(termios, enum_name) << shift:
+                    items.append(enum_name)
                     break
             else:
                 assert False
             flags &= ~mask
-                
 
     assert flags == 0
-    return ",".join(options)
+    return ",".join(items)
+
 
 def _print_iflags(iflags):
     print("iflags =",
     _flags2str((
-        "IGNBRK",
-        "BRKINT",
-        "IGNPAR",
-        "PARMRK",
-        "INPCK",
-        "ISTRIP",
-        "INLCR",
-        "IGNCR",
-        "ICRNL",
-        "IUCLC",
-        "IXON",
-        "IXANY",
-        "IXOFF",
-        "IMAXBEL",
+        "IGNBRK", "BRKINT", "IGNPAR", "PARMRK",
+        "INPCK",  "ISTRIP", "INLCR",  "IGNCR",
+        "ICRNL",  "IUCLC",  "IXON",   "IXANY",
+        "IXOFF",  "IMAXBEL",
 #        "IUTF8"
     ), iflags))
+
 
 def _print_oflags(oflags):
     print("oflags =",
@@ -170,10 +69,12 @@ def _print_oflags(oflags):
         ("FFDLY",  0, ("FF0", "FF1"))
     ), oflags))
 
+
 def _print_cflags(cflags):
+    baud_rate_strs = ["B{}".format(speed) for speed in BAUD_RATES]
     print("cflags =",
     _flags2str((
-        ("CBAUD", 0, BAUD_RATES),
+        ("CBAUD", 0, baud_rate_strs),
         "CBAUDEX",
         ("CSIZE", 0, ("CS5", "CS6", "CS7", "CS8")),
         "CSTOPB",
@@ -183,7 +84,7 @@ def _print_cflags(cflags):
         "HUPCL",
         "CLOCAL",
 #        "LOBLK",
-        ("CIBAUD", 5, BAUD_RATES),
+        ("CIBAUD", 5, baud_rate_strs),
 #        "CMSPAR",
         "CRTSCTS"
     ), cflags))
@@ -235,11 +136,12 @@ def _print_cc(cc):
         val = getattr(termios, item)
         print(item, "=", cc[val])
 
-def _print_speed(speed):
-    for item in BAUD_RATES:
-        val = getattr(termios, item)
-        if speed == val:
-            print(speed, "=", item)
+
+def _print_speed(speed_enum_val):
+    for speed in BAUD_RATES:
+        candiate_enum_val = getattr(termios, "B{}".format(speed))
+        if speed_enum_val == candiate_enum_val:
+            print("BAUD_RATE =", speed )
             return
 
 class SerialIo:
@@ -247,16 +149,18 @@ class SerialIo:
     def __init__(self, dev, baud = 38400):
         self._baud = baud
         self._in_buf = b""
+        self._fd = None
 
         try:
-#           self.fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-            self.fd = os.open(dev, os.O_RDWR | os.O_NOCTTY)
+#           self._fd = os.open(dev, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+            self._fd = os.open(dev, os.O_RDWR | os.O_NOCTTY)
         except PermissionError as err:
             print("Permission to open {} denied".format(dev))
             raise
-#       fcntl.fcntl(self.fd, fcntl.F_SETFL, 0) # Clear O_NONBLOCK
+#       fcntl.fcntl(self._fd, fcntl.F_SETFL, 0) # Clear O_NONBLOCK
 
-        iflag, oflag, cflag, lflag, ispeed, ospeed, cc = termios.tcgetattr(self.fd)
+        iflag, oflag, cflag, lflag, ispeed, ospeed, cc = termios.tcgetattr(self._fd)
+
         _print_iflags(iflag)
         _print_oflags(oflag)
         _print_cflags(cflag)
@@ -271,10 +175,12 @@ class SerialIo:
         lflag = self._update_local_mode_flags(lflag)
         ispeed = self._update_speed(ispeed)
         ospeed = self._update_speed(ospeed)
-        termios.tcsetattr(self.fd, termios.TCSANOW, [iflag, oflag, cflag, lflag, ispeed, ospeed, cc])
+        termios.tcsetattr(self._fd, termios.TCSANOW, [iflag, oflag, cflag, lflag, ispeed, ospeed, cc])
    
     def __del__(self):
-        os.close(self.fd)
+        if self._fd is not None:
+            os.close(self._fd)
+            self._fd = None
 
     def _update_input_mode_flags(self, old_iflag):
         """Update the iflags (input flags) for the serial port
@@ -341,19 +247,9 @@ class SerialIo:
 
     def _update_speed(self, old_speed):
         """Update the speed parameter"""
-        ranges = (0,
-                 50,      75,      110,     134, 
-                150,     200,      300,     600, 
-               1200,    1800,     2400,    4800, 
-               9600,   19200,    38400,   57600, 
-             115200,  230400,   460800,  500000, 
-             576000,  921600,  1000000, 1152000, 
-            1500000, 2000000,  2500000, 3000000, 
-            3500000, 4000000
-        )
-        for idx, val in enumerate(ranges):
+        for idx, val in enumerate(BAUD_RATES):
             if val > self._baud:
-                return getattr(termios, "B{}".format(ranges[idx-1]))
+                return getattr(termios, "B{}".format(BAUD_RATES[idx-1]))
 
     def readline(self):
         while True:
@@ -366,11 +262,11 @@ class SerialIo:
                 self._in_buf = self._in_buf[idx+1:]
                 break
 
-            self._in_buf += os.read(self.fd, 1000)
+            self._in_buf += os.read(self._fd, 1000)
         return result
 
     def write(self, cmd):
-        os.write(self.fd, cmd + b"\r")
+        os.write(self._fd, cmd + b"\r")
 
 
 if __name__ == "__main__":
