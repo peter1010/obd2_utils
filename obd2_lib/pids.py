@@ -118,11 +118,11 @@ def extract_fuel_system_status(octets):
         except KeyError:
             status = "Invalid fuel system status"
 
-        print("FUEL SYSTEM STATUS=", ",".join(status))
+        print("FUEL SYSTEM STATUS={}".format(status))
         
 def extract_percentage(octets):
     percent = (100 * octets[0]) / 255
-    print("{}%",format(percent))
+    print("{}%".format(int(percent+0.5)))
 
 def extract_temperature(octets):
     temp = octets[0] - 40
@@ -290,7 +290,7 @@ PIDS  = {
     2: ("Freeze DTC", None),
     3: ("Fuel System Status", extract_fuel_system_status),
     4: ("Calculated engine load", extract_percentage),
-    5: ("Engine Coolant temperaure", extract_temperature),
+    5: ("Engine Coolant temperature", extract_temperature),
     6: ("Short term fuel trim - Bank 1", extract_trim),
     7: ("Long term fuel trim - Bank 1", extract_trim),
     8: ("Short term fuel trim - Bank 2", extract_trim),

@@ -35,7 +35,7 @@ class Elm327:
     def reset_all(self):
         version = self.send_get_cmd(b"ATZ")
         self._echo_mode = True
-        print(version)
+        print("Response from ATZ was", version)
 
     def set_echo_mode(self, mode):
         if mode:
@@ -46,6 +46,7 @@ class Elm327:
             self._echo_mode = False
 
     def query_ignition_state(self):
+        print("Query Ignition state")
         result = self.send_get_cmd(b"ATIGN")
         if result == b'ON':
             return True
@@ -79,7 +80,7 @@ class Elm327:
         """Send mode and pid command"""
         response = self.send_get_cmd("{:02X}{:02X}".format(mode,pid).encode("ascii")).decode("ascii")
         octets = [int(x, base=16) for x in response.split()]
-        assert mode & 0x40 == octets[0]
+        assert mode | 0x40 == octets[0]
         assert pid == octets[1]
         return octets[2:]
 
